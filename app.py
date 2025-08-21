@@ -1,3 +1,6 @@
+# app.py
+# NFL Rosters Explorer — fixed CSV, team filter, and player search
+
 import io
 import pandas as pd
 import numpy as np
@@ -7,17 +10,17 @@ from pandas.api.types import is_numeric_dtype, is_datetime64_any_dtype
 # ========================
 # CONFIGURATION
 # ========================
-st.set_page_config(page_title="CFB Neg Corr Explorer", layout="wide")
-st.title("🏈 CFB NEG CORR Explorer")
+st.set_page_config(page_title="CFB Rosters Explorer", layout="wide")
+st.title("🏈 CFB Rosters Explorer")
 st.caption("Filter & explore the 2025 rosters with 2024 PFF stats")
 
 # ========================
 # COLUMNS TO DISPLAY
 # ========================
 DISPLAY_COLS = [
-    "name_clean", "team", "Position", "pff_grades", "rating", "avg_depth_of_target",
-    "grades_hands_drop", "grades_pass_route", "receptions", "yards", "route_rate",
-    "wide_rate", "slot_rate", "yards_per_reception", "yprr", "elusive_rating"
+    "name_clean", "team", "Position", "pff_grades", "rating", "avg_depth_of_target", "yards_per_reception", "yprr",
+    "grades_pass_route", "receptions", "yards", "route_rate",
+    "wide_rate", "slot_rate", "elusive_rating"
 ]
 
 # ========================
@@ -30,70 +33,32 @@ def load_data():
     df = df[df["Position"].isin(["WR", "TE", "RB"])]
     # Filter to only desired columns (ignore missing gracefully)
     cols_to_use = [c for c in DISPLAY_COLS if c in df.columns]
-    return df[cols_to_use]
+    df = df[cols_to_use]
+    return df
 
 df = load_data()
 
 # ========================
-# TEAM FILTER
+# PLAYER SEARCH (TOP OF PAGE)
 # ========================
-teams = sorted(df["team"].dropna().unique())
+search_name = st.text_input("🔎 Search player (by name)", placeholder="Type a player name…")
+filtered_df = df.copy()
+if search_name:
+    q = search_name.strip().lower()
+    if "name_clean" in filtered_df.columns:
+        filtered_df = filtered_df[filtered_df["name_clean"].astype(str).str.lower().str.contains(q, na=False)]
+
+# ========================
+# TEAM FILTER (SIDEBAR)
+# ========================
+teams = sorted(filtered_df["team"].dropna().unique()) if "team" in filtered_df.columns else []
 selected_teams = st.sidebar.multiselect(
     "Select Teams",
     options=teams,
     default=teams  # Default = all teams selected
 )
-
-filtered_df = df[df["team"].isin(selected_teams)]
-
-# ========================
-# DYNAMIC FILTERING FOR OTHER COLUMNS
-# ========================
-st.sidebar.header("Additional Filters")
-
-for col in filtered_df.columns:
-    if col in ["team", "Position", "name_clean"]:  # skip team, position, name
-        continue
-
-    with st.sidebar.expander(f"Filter: {col}", expanded=False):
-        col_data = filtered_df[col]
-
-        # Numeric slider
-        if is_numeric_dtype(col_data):
-            min_val, max_val = float(np.nanmin(col_data)), float(np.nanmax(col_data))
-            step = (max_val - min_val) / 100 if max_val != min_val else 1.0
-            sel_min, sel_max = st.slider(
-                "Range",
-                min_value=float(min_val),
-                max_value=float(max_val),
-                value=(float(min_val), float(max_val)),
-                step=step
-            )
-            filtered_df = filtered_df[(filtered_df[col] >= sel_min) & (filtered_df[col] <= sel_max)]
-
-        # Datetime filter
-        elif is_datetime64_any_dtype(col_data):
-            min_date = pd.to_datetime(col_data.min())
-            max_date = pd.to_datetime(col_data.max())
-            start, end = st.date_input(
-                "Date Range",
-                value=(min_date.date(), max_date.date()),
-                min_value=min_date.date(),
-                max_value=max_date.date(),
-            )
-            start_ts = pd.to_datetime(start)
-            end_ts = pd.to_datetime(end) + pd.Timedelta(days=1) - pd.Timedelta(milliseconds=1)
-            filtered_df = filtered_df[
-                (pd.to_datetime(filtered_df[col]) >= start_ts) & (pd.to_datetime(filtered_df[col]) <= end_ts)
-            ]
-
-        # Categorical multiselect
-        else:
-            opts = filtered_df[col].dropna().unique().tolist()
-            opts = sorted(opts, key=lambda x: str(x))
-            selected = st.multiselect("Select", options=opts, default=opts)
-            if selected:
-                filtered_df = filtered_df[filtered_df[col].isin(selected)]
+if selected_teams:
+    filtered_df = filtered_df[filtered_df["team"].isin(selected_teams)]
 
 # ========================
 # DISPLAY RESULTS
@@ -123,3 +88,4 @@ st.download_button(
     file_name="filtered_rosters.csv",
     mime="text/csv",
 )
+
