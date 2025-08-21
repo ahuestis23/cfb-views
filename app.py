@@ -7,9 +7,18 @@ from pandas.api.types import is_numeric_dtype, is_datetime64_any_dtype
 # ========================
 # CONFIGURATION
 # ========================
-st.set_page_config(page_title="NFL Rosters Explorer", layout="wide")
-st.title("🏈 CFB Rosters Explorer")
+st.set_page_config(page_title="CFB Neg Corr Explorer", layout="wide")
+st.title("🏈 CFB NEG CORR Explorer")
 st.caption("Filter & explore the 2025 rosters with 2024 PFF stats")
+
+# ========================
+# COLUMNS TO DISPLAY
+# ========================
+DISPLAY_COLS = [
+    "name_clean", "team", "Position", "pff_grades", "rating", "avg_depth_of_target",
+    "grades_hands_drop", "grades_pass_route", "receptions", "yards", "route_rate",
+    "wide_rate", "slot_rate", "yards_per_reception", "yprr", "elusive_rating"
+]
 
 # ========================
 # LOAD DATA (HARDCODED CSV)
@@ -19,7 +28,9 @@ def load_data():
     df = pd.read_csv("rosters_2025_w_2024_pff_stats.csv")
     # Keep only WR, TE, RB
     df = df[df["Position"].isin(["WR", "TE", "RB"])]
-    return df
+    # Filter to only desired columns (ignore missing gracefully)
+    cols_to_use = [c for c in DISPLAY_COLS if c in df.columns]
+    return df[cols_to_use]
 
 df = load_data()
 
@@ -28,7 +39,7 @@ df = load_data()
 # ========================
 teams = sorted(df["team"].dropna().unique())
 selected_teams = st.sidebar.multiselect(
-    "Select Teams", 
+    "Select Teams",
     options=teams,
     default=teams  # Default = all teams selected
 )
@@ -41,20 +52,21 @@ filtered_df = df[df["team"].isin(selected_teams)]
 st.sidebar.header("Additional Filters")
 
 for col in filtered_df.columns:
-    if col in ["team", "Position"]:
-        continue  # already handled
+    if col in ["team", "Position", "name_clean"]:  # skip team, position, name
+        continue
 
     with st.sidebar.expander(f"Filter: {col}", expanded=False):
         col_data = filtered_df[col]
+
         # Numeric slider
         if is_numeric_dtype(col_data):
             min_val, max_val = float(np.nanmin(col_data)), float(np.nanmax(col_data))
             step = (max_val - min_val) / 100 if max_val != min_val else 1.0
             sel_min, sel_max = st.slider(
-                "Range", 
-                min_value=float(min_val), 
-                max_value=float(max_val), 
-                value=(float(min_val), float(max_val)), 
+                "Range",
+                min_value=float(min_val),
+                max_value=float(max_val),
+                value=(float(min_val), float(max_val)),
                 step=step
             )
             filtered_df = filtered_df[(filtered_df[col] >= sel_min) & (filtered_df[col] <= sel_max)]
@@ -111,4 +123,3 @@ st.download_button(
     file_name="filtered_rosters.csv",
     mime="text/csv",
 )
-
