@@ -8,7 +8,7 @@ from pandas.api.types import is_numeric_dtype, is_datetime64_any_dtype
 # CONFIGURATION
 # ========================
 st.set_page_config(page_title="NFL Rosters Explorer", layout="wide")
-st.title("🏈 NFL Rosters Explorer")
+st.title("🏈 CFB Rosters Explorer")
 st.caption("Filter & explore the 2025 rosters with 2024 PFF stats")
 
 # ========================
