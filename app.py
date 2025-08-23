@@ -257,43 +257,54 @@ with st.sidebar:
     data = load_model_input(DATA_PATH)
     artifacts = fit_clusters_and_distributions(data)
 
-    # Build nice labels for player dropdown (Name – Team – Pos)
-    players_table = artifacts.players_table.copy()
-    players_table["label"] = players_table["player_name"] + " — " + players_table["team_market"] + " (" + players_table["position"] + ")"
-    players_table = players_table.sort_values(["position","player_name"])
+    use_pos_only = st.toggle("Use custom / position-only mode", value=False)
 
-    selected_label = st.selectbox(
-        "Select player",
-        players_table["label"].tolist(),
-        index=0
-    )
-    sel_row = players_table.loc[players_table["label"] == selected_label].iloc[0]
-    sel_name = sel_row["player_name"]
-    sel_team = sel_row["team_market"]
-    sel_pos  = sel_row["position"]
+    if not use_pos_only:
+        # Build nice labels for player dropdown (Name – Team – Pos)
+        players_table = artifacts.players_table.copy()
+        players_table["label"] = (
+            players_table["player_name"] + " — " +
+            players_table["team_market"] + " (" +
+            players_table["position"] + ")"
+        )
+        players_table = players_table.sort_values(["position","player_name"])
+
+        selected_label = st.selectbox(
+            "Select player",
+            players_table["label"].tolist(),
+            index=0
+        )
+        sel_row = players_table.loc[players_table["label"] == selected_label].iloc[0]
+        sel_name = sel_row["player_name"]
+        sel_team = sel_row["team_market"]
+        sel_pos  = sel_row["position"]
+    else:
+        # Position-only mode (no player needed)
+        sel_pos = st.selectbox("Position", ["WR", "TE", "RB"], index=0)
+        # Dummy placeholders; simulate_player will fall back to position-only
+        sel_name = "UNKNOWN"
+        sel_team = "UNKNOWN"
 
     proj_rec = st.number_input("Projected receptions", min_value=0.0, max_value=20.0, value=4.5, step=0.1)
     proj_yds = st.number_input("Projected receiving yards (optional)", min_value=0.0, max_value=300.0, value=60.0, step=0.5)
     n_sims   = st.number_input("Simulations", min_value=1000, max_value=500000, value=100000, step=1000)
     rec_mode = st.selectbox("Receptions mode", ["poisson","fixed","binomial_fractional"], index=0)
-    # Lines for building joint queries
+
+    # Prop Lines
     st.markdown("---")
     st.header("Prop Lines")
     rec_line = st.number_input("Reception line (e.g., 3.5 → U3.5 / O3.5)", min_value=0.0, max_value=20.0, value=3.5, step=0.5)
     yds_line = st.number_input("Receiving yards line (e.g., 44.5)", min_value=0.0, max_value=300.0, value=44.5, step=0.5)
-
-    # Yard thresholds for the U(rec) & Y≥X table
     yard_thresholds_csv = st.text_input("Yard thresholds (for U(rec)&Y≥X)", value="50,60,70,80,90")
-
-    # Max k for the k+ rec & U(yds) table
     max_k = st.number_input("Max receptions k for k+ rec & U(yds)", min_value=1, max_value=20, value=7, step=1)
-    
-    run = st.button("Run simulation")
 
+    run = st.button("Run simulation")
 
 st.caption("Default joint queries shown: U4.5 receptions & 50/60/70/80/90/100+ yards (i.e., R<=4 & Y>=X).")
 
 if run:
+    if use_pos_only:
+        st.info(f"Position-only mode: using {sel_pos} pooled distribution (no player record required).")
     sims, summary = simulate_player(
         artifacts,
         player_name=sel_name,
