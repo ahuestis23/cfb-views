@@ -257,10 +257,44 @@ with st.sidebar:
     data = load_model_input(DATA_PATH)
     artifacts = fit_clusters_and_distributions(data)
 
+    # ---------- helpers (local to sidebar) ----------
+    def _coerce_float(s, default, minv=None, maxv=None):
+        try:
+            v = float(str(s).replace(",", "").strip())
+        except Exception:
+            st.warning(f"Could not parse a number from '{s}'. Using default {default}.")
+            return default
+        if minv is not None and v < minv: v = minv
+        if maxv is not None and v > maxv: v = maxv
+        return v
+
+    def _parse_optional_float(s, minv=None, maxv=None):
+        s = str(s).strip()
+        if s == "":
+            return None
+        try:
+            v = float(s.replace(",", ""))
+        except Exception:
+            st.warning("Could not parse optional yards; leaving blank.")
+            return None
+        if minv is not None and v < minv: v = minv
+        if maxv is not None and v > maxv: v = maxv
+        return v
+
+    def _coerce_int(s, default, minv=None, maxv=None):
+        try:
+            v = int(float(str(s).replace(",", "").strip()))
+        except Exception:
+            st.warning(f"Could not parse an integer from '{s}'. Using default {default}.")
+            return default
+        if minv is not None and v < minv: v = minv
+        if maxv is not None and v > maxv: v = maxv
+        return v
+
+    # ---------- mode / player pick ----------
     use_pos_only = st.toggle("Use custom / position-only mode", value=False)
 
     if not use_pos_only:
-        # Build nice labels for player dropdown (Name – Team – Pos)
         players_table = artifacts.players_table.copy()
         players_table["label"] = (
             players_table["player_name"] + " — " +
@@ -279,44 +313,36 @@ with st.sidebar:
         sel_team = sel_row["team_market"]
         sel_pos  = sel_row["position"]
     else:
-        # Position-only mode (no player needed)
         sel_pos = st.selectbox("Position", ["WR", "TE", "RB"], index=0)
-        # Dummy placeholders; simulate_player will fall back to position-only
         sel_name = "UNKNOWN"
         sel_team = "UNKNOWN"
 
-    proj_rec = st.number_input(
-        "Projected receptions",
-        min_value=0.0, max_value=20.0, value=4.5,
-        step=0.1, format="%.1f", key="proj_rec"
-    )
-    
-    proj_yds = st.number_input(
-        "Projected receiving yards (optional)",
-        min_value=0.0, max_value=300.0, value=60.0,
-        step=0.5, format="%.1f", key="proj_yds"
-    )
-    
-    n_sims = st.number_input(
-        "Simulations",
-        min_value=1000, max_value=500000, value=100000,
-        step=1000, format="%d", key="n_sims"
-    )
-    
-    # Prop Lines
-    rec_line = st.number_input(
-        "Reception line (e.g., 3.5 → U3.5 / O3.5)",
-        min_value=0.0, max_value=20.0, value=3.5,
-        step=0.5, format="%.1f", key="rec_line"
-    )
-    
-    yds_line = st.number_input(
-        "Receiving yards line (e.g., 44.5)",
-        min_value=0.0, max_value=300.0, value=44.5,
-        step=0.5, format="%.1f", key="yds_line"
-    )
+    # ---------- projections (text inputs, no steppers) ----------
+    proj_rec_raw = st.text_input("Projected receptions", value="4.5")
+    proj_rec = _coerce_float(proj_rec_raw, default=4.5, minv=0.0, maxv=20.0)
+
+    proj_yds_raw = st.text_input("Projected receiving yards (optional)", value="")
+    proj_yds = _parse_optional_float(proj_yds_raw, minv=0.0, maxv=300.0)
+
+    n_sims_raw = st.text_input("Simulations", value="100000")
+    n_sims = _coerce_int(n_sims_raw, default=100000, minv=1000, maxv=500000)
+
+    rec_mode = st.selectbox("Receptions mode", ["poisson","fixed","binomial_fractional"], index=0)
+
+    # ---------- prop lines (text inputs, no steppers) ----------
+    st.markdown("---")
+    st.header("Prop Lines")
+
+    rec_line_raw = st.text_input("Reception line (e.g., 3.5 → U3.5 / O3.5)", value="3.5")
+    rec_line = _coerce_float(rec_line_raw, default=3.5, minv=0.0, maxv=20.0)
+
+    yds_line_raw = st.text_input("Receiving yards line (e.g., 44.5)", value="44.5")
+    yds_line = _coerce_float(yds_line_raw, default=44.5, minv=0.0, maxv=300.0)
+
     yard_thresholds_csv = st.text_input("Yard thresholds (for U(rec)&Y≥X)", value="50,60,70,80,90")
-    max_k = st.number_input("Max receptions k for k+ rec & U(yds)", min_value=1, max_value=20, value=7, step=1)
+
+    max_k_raw = st.text_input("Max receptions k for k+ rec & U(yds)", value="7")
+    max_k = _coerce_int(max_k_raw, default=7, minv=1, maxv=20)
 
     run = st.button("Run simulation")
 
