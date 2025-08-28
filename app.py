@@ -285,16 +285,36 @@ with st.sidebar:
         sel_name = "UNKNOWN"
         sel_team = "UNKNOWN"
 
-    proj_rec = st.number_input("Projected receptions", min_value=0.0, max_value=20.0, value=4.5, step=0.1)
-    proj_yds = st.number_input("Projected receiving yards (optional)", min_value=0.0, max_value=300.0, value=60.0, step=0.5)
-    n_sims   = st.number_input("Simulations", min_value=1000, max_value=500000, value=100000, step=1000)
-    rec_mode = st.selectbox("Receptions mode", ["poisson","fixed","binomial_fractional"], index=0)
-
+    proj_rec = st.number_input(
+        "Projected receptions",
+        min_value=0.0, max_value=20.0, value=4.5,
+        step=0.1, format="%.1f", key="proj_rec"
+    )
+    
+    proj_yds = st.number_input(
+        "Projected receiving yards (optional)",
+        min_value=0.0, max_value=300.0, value=60.0,
+        step=0.5, format="%.1f", key="proj_yds"
+    )
+    
+    n_sims = st.number_input(
+        "Simulations",
+        min_value=1000, max_value=500000, value=100000,
+        step=1000, format="%d", key="n_sims"
+    )
+    
     # Prop Lines
-    st.markdown("---")
-    st.header("Prop Lines")
-    rec_line = st.number_input("Reception line (e.g., 3.5 → U3.5 / O3.5)", min_value=0.0, max_value=20.0, value=3.5, step=0.5)
-    yds_line = st.number_input("Receiving yards line (e.g., 44.5)", min_value=0.0, max_value=300.0, value=44.5, step=0.5)
+    rec_line = st.number_input(
+        "Reception line (e.g., 3.5 → U3.5 / O3.5)",
+        min_value=0.0, max_value=20.0, value=3.5,
+        step=0.5, format="%.1f", key="rec_line"
+    )
+    
+    yds_line = st.number_input(
+        "Receiving yards line (e.g., 44.5)",
+        min_value=0.0, max_value=300.0, value=44.5,
+        step=0.5, format="%.1f", key="yds_line"
+    )
     yard_thresholds_csv = st.text_input("Yard thresholds (for U(rec)&Y≥X)", value="50,60,70,80,90")
     max_k = st.number_input("Max receptions k for k+ rec & U(yds)", min_value=1, max_value=20, value=7, step=1)
 
